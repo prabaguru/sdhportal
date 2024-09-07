@@ -1,85 +1,155 @@
-// @ts-nocheck
-import { async } from '@angular/core/testing';
-import { Observable, of as observableOf, throwError } from 'rxjs';
+typescript
+import { ActivatedRouteSnapshot, DetachedRouteHandle } from '@angular/router';
+import { SdhCustomReuseStrategy } from './path-to-your-file';
 
-import { SdhCustomReuseStrategy } from './sdh-custom-reuse-strategy';
 describe('SdhCustomReuseStrategy', () => {
-  let obj;
+    let reuseStrategy: SdhCustomReuseStrategy;
 
-  beforeEach(() => {
-    obj = new SdhCustomReuseStrategy();
-  });
-
-  it('should run #shouldDetach()', async () => {
-
-    obj.shouldDetach({
-      routeConfig: {
-        loadChildren: {}
-      },
-      data: {
-        reuseRoute: {}
-      }
+    beforeEach(() => {
+        reuseStrategy = new SdhCustomReuseStrategy();
     });
 
-  });
+    describe('shouldDetach', () => {
+        it('should return true if route is marked for reuse', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+            expect(reuseStrategy.shouldDetach(route)).toBe(true);
+        });
 
-  it('should run #getRouteUrl()', async () => {
+        it('should return false if route is not marked for reuse', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: false }
+            } as ActivatedRouteSnapshot;
+            expect(reuseStrategy.shouldDetach(route)).toBe(false);
+        });
 
-    obj.getRouteUrl({
-      _routerState: {
-        url: {}
-      }
+        it('should return false if routeConfig is null', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: null,
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+            expect(reuseStrategy.shouldDetach(route)).toBe(false);
+        });
     });
 
-  });
+    describe('store', () => {
+        it('should store route handle correctly', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true },
+                params: {},
+                queryParams: {},
+                url: [],
+                // other necessary properties
+            } as ActivatedRouteSnapshot;
 
-  it('should run #store()', async () => {
-    obj.storedRouteHandles = obj.storedRouteHandles || {};
-    obj.storedRouteHandles.set = jest.fn();
-    obj.getRouteUrl = jest.fn();
-    obj.store({}, {});
-    // expect(obj.storedRouteHandles.set).toHaveBeenCalled();
-    // expect(obj.getRouteUrl).toHaveBeenCalled();
-  });
-
-  it('should run #shouldAttach()', async () => {
-    obj.storedRouteHandles = obj.storedRouteHandles || {};
-    obj.storedRouteHandles.has = jest.fn();
-    obj.getRouteUrl = jest.fn();
-    obj.shouldAttach({});
-    // expect(obj.storedRouteHandles.has).toHaveBeenCalled();
-    // expect(obj.getRouteUrl).toHaveBeenCalled();
-  });
-
-  it('should run #retrieve()', async () => {
-    obj.storedRouteHandles = obj.storedRouteHandles || {};
-    obj.storedRouteHandles.get = jest.fn();
-    obj.getRouteUrl = jest.fn();
-    obj.retrieve({
-      routeConfig: {
-        loadChildren: {}
-      }
-    });
-    // expect(obj.storedRouteHandles.get).toHaveBeenCalled();
-    // expect(obj.getRouteUrl).toHaveBeenCalled();
-  });
-
-  it('should run #shouldReuseRoute()', async () => {
-
-    obj.shouldReuseRoute({
-      routeConfig: {}
-    }, {
-      routeConfig: {}
+            const handle: DetachedRouteHandle = {};
+            reuseStrategy.store(route, handle);
+            expect(reuseStrategy.storedRouteHandles.size).toBe(1);
+        });
     });
 
-  });
+    describe('shouldAttach', () => {
+        it('should return true if route is stored', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
 
-  it('should run #clearCacheEntries()', async () => {
-    obj.storedRouteHandles = obj.storedRouteHandles || {};
-    obj.storedRouteHandles = ['storedRouteHandles'];
-    obj.storedRouteHandles.delete = jest.fn();
-    obj.clearCacheEntries({});
-    // expect(obj.storedRouteHandles.delete).toHaveBeenCalled();
-  });
+            const handle: DetachedRouteHandle = {};
+            reuseStrategy.store(route, handle);
+            expect(reuseStrategy.shouldAttach(route)).toBe(true);
+        });
 
+        it('should return false if route is not stored', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+
+            expect(reuseStrategy.shouldAttach(route)).toBe(false);
+        });
+    });
+
+    describe('retrieve', () => {
+        it('should return stored handle if route is stored', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+
+            const handle: DetachedRouteHandle = {};
+            reuseStrategy.store(route, handle);
+            expect(reuseStrategy.retrieve(route)).toBe(handle);
+        });
+
+        it('should return null if route is not stored', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+
+            expect(reuseStrategy.retrieve(route)).toBeNull();
+        });
+    });
+
+    describe('shouldReuseRoute', () => {
+        it('should return true if future and current route configs are the same', () => {
+            const future: ActivatedRouteSnapshot = {
+                routeConfig: { path: 'test' },
+            } as ActivatedRouteSnapshot;
+
+            const current: ActivatedRouteSnapshot = {
+                routeConfig: { path: 'test' },
+            } as ActivatedRouteSnapshot;
+
+            expect(reuseStrategy.shouldReuseRoute(future, current)).toBe(true);
+        });
+
+        it('should return false if future and current route configs are different', () => {
+            const future: ActivatedRouteSnapshot = {
+                routeConfig: { path: 'test' },
+            } as ActivatedRouteSnapshot;
+
+            const current: ActivatedRouteSnapshot = {
+                routeConfig: { path: 'different' },
+            } as ActivatedRouteSnapshot;
+
+            expect(reuseStrategy.shouldReuseRoute(future, current)).toBe(false);
+        });
+    });
+
+    describe('clearCacheEntries', () => {
+        it('should clear cache entries matching the path', () => {
+            const route1: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+            const route2: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+
+            reuseStrategy.store(route1, {});
+            reuseStrategy.store(route2, {});
+            reuseStrategy.clearCacheEntries('test');
+
+            expect(reuseStrategy.storedRouteHandles.size).toBe(0); // Assuming both are stored under the same path
+        });
+
+        it('should not clear cache if no matching path', () => {
+            const route: ActivatedRouteSnapshot = {
+                routeConfig: { loadChildren: null },
+                data: { reuseRoute: true }
+            } as ActivatedRouteSnapshot;
+
+            reuseStrategy.store(route, {});
+            reuseStrategy.clearCacheEntries('nonexistent');
+
+            expect(reuseStrategy.storedRouteHandles.size).toBe(1); // Should remain unchanged
+        });
+    });
 });
